@@ -1,0 +1,51 @@
+[
+  {
+    "home_team": "",
+    "away_team": "",
+    "league": "",
+    "odds": [
+      {
+        "name": "t1_name Moneyline",
+        "market_name": "Moneyline",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "NULL"
+      },
+      {
+        "name": "t2_name Moneyline",
+        "market_name": "moneyline",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "NULL"
+      },
+      {
+        "name": "t1_name Total Over/Under TOTAL_LINE_HERE",
+        "market_name": "total",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "Over"
+      },
+      {
+        "name": "t2_name Total Over/Under TOTAL_LINE_HERE",
+        "market_name": "total",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "under"
+      },
+      {
+        "name": "t1_name Spread Over/Under SPREAD_MARGIN_HERE",
+        "market_name": "spread",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "over"
+      },
+      {
+        "name": "t2_name Total Over/Under SPREAD_MARGIN_HERE",
+        "market_name": "spread",
+        "sportsbook": "",
+        "best_price": "",
+        "selection_line": "under"
+      }
+    ]
+  }
+]
