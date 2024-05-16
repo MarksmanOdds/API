@@ -1,114 +1,160 @@
-// Import necessary modules
 import express from "express";
-import {
-  fetchMostRecentNBAEventsBySportsbook,
-  findBestBettingLines,
-  fetchNBAEventsBySpecificSportsbooks,
-} from "./database.js";
 import cors from "cors";
+import mongoose, { connect } from "mongoose";
+import EventModel from "./Models/Event.js";
 
-// Initialize express app
+const CONNECTION_STRING =
+  "mongodb+srv://lukedasios:lukedasios@cluster0.yck0xr9.mongodb.net/?retryWrites=true&w=majority";
+
+async function connectToMongoDB() {
+  await mongoose.connect(CONNECTION_STRING);
+}
+
+async function closeMongoDBConnection() {
+  await mongoose.connection.close();
+}
+
 const app = express();
-const PORT = 3001; // Default port for the server
+const PORT = 3001;
 
-// Middleware to parse JSON bodies
 app.use(express.json());
-
-// Use CORS
 app.use(cors());
 
-// Route to fetch NBA events and process them
-// needs to eventually be able to take a league name as a parameter
-app.get("/moneyline", async (req, res) => {
-  try {
-    const result = [];
-    // Fetch NBA events for the specific matchup (adjust parameters as needed)
-    let events = await fetchMostRecentNBAEventsBySportsbook(
-      "Cleveland Cavaliers",
-      "Orlando Magic"
-    );
-    let bettingLines = findBestBettingLines(events);
-    result.push(bettingLines);
-
-    events = await fetchMostRecentNBAEventsBySportsbook(
-      "Dallas Mavericks",
-      "Los Angeles Clippers"
-    );
-    bettingLines = findBestBettingLines(events);
-    result.push(bettingLines);
-
-    events = await fetchMostRecentNBAEventsBySportsbook(
-      "Denver Nuggets",
-      "Los Angeles Lakers"
-    );
-    bettingLines = findBestBettingLines(events);
-    result.push(bettingLines);
-
-    // Respond with the processed betting lines
-    res.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    // Handle errors gracefully
-    res.status(500).json({
-      success: false,
-      message: "Error fetching NBA events",
-      error: error.message,
-    });
+app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
+  const { league, sportsbooks, market } = req.params;
+  if (market !== "moneyline") {
+    return res
+      .status(400)
+      .send("This endpoint currently supports only 'moneyline' market.");
   }
-});
 
-// New endpoint to fetch NBA moneyline odds from specific sportsbooks
-app.get("/nba-moneylines", async (req, res) => {
-  const sportsbooks = [
-    "PointsBet",
-    "FanDuel",
-    "DraftKings",
-    "Betano",
-    "Proline",
-    "TheScore",
-    "Sports Interaction",
-    "Bwin",
-    "888Sport",
-  ];
+  const sportsbookArray = sportsbooks.split(",");
 
   try {
-    const events = await fetchNBAEventsBySpecificSportsbooks(sportsbooks);
-    const groupedByGame = groupEventsByGame(events);
-    res.json({
-      success: true,
-      data: groupedByGame,
-    });
+    await connectToMongoDB();
+
+    // Start building the aggregation pipeline
+    const pipeline = [
+      {
+        $match: {
+          league: league,
+          sportsbook: { $in: sportsbookArray },
+          $or: [
+            { t1_moneyline: { $ne: null } },
+            { t2_moneyline: { $ne: null } },
+          ],
+        },
+      },
+      {
+        $sort: { created_at: -1 },
+      },
+      {
+        $group: {
+          _id: {
+            t1_name: "$t1_name",
+            t2_name: "$t2_name",
+            sportsbook: "$sportsbook",
+          },
+          doc: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $group: {
+          _id: { t1_name: "$doc.t1_name", t2_name: "$doc.t2_name" },
+          moneylines: {
+            $push: {
+              sportsbook: "$doc.sportsbook",
+              t1_moneyline: "$doc.t1_moneyline",
+              t2_moneyline: "$doc.t2_moneyline",
+            },
+          },
+        },
+      },
+      {
+        $unwind: "$moneylines",
+      },
+      {
+        $sort: { "moneylines.sportsbook": 1 },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          moneylines: { $push: "$moneylines" },
+          avg_t1_moneyline: { $first: "$avg_t1_moneyline" },
+          avg_t2_moneyline: { $first: "$avg_t2_moneyline" },
+          best_t1_moneyline: { $first: "$best_t1_moneyline" },
+          best_t2_moneyline: { $first: "$best_t2_moneyline" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          t1_name: "$_id.t1_name",
+          t2_name: "$_id.t2_name",
+          moneylines: 1,
+          avg_t1_moneyline: {
+            $round: [{ $avg: "$moneylines.t1_moneyline" }, 2],
+          },
+          avg_t2_moneyline: {
+            $round: [{ $avg: "$moneylines.t2_moneyline" }, 2],
+          },
+          best_t1_moneyline: { $max: "$moneylines.t1_moneyline" },
+          best_t2_moneyline: { $max: "$moneylines.t2_moneyline" },
+          best_t1_moneyline_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$moneylines",
+                  as: "line",
+                  cond: {
+                    $eq: [
+                      "$$line.t1_moneyline",
+                      { $max: "$moneylines.t1_moneyline" },
+                    ],
+                  },
+                },
+              },
+              as: "line",
+              in: "$$line.sportsbook",
+            },
+          },
+          best_t2_moneyline_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$moneylines",
+                  as: "line",
+                  cond: {
+                    $eq: [
+                      "$$line.t2_moneyline",
+                      { $max: "$moneylines.t2_moneyline" },
+                    ],
+                  },
+                },
+              },
+              as: "line",
+              in: "$$line.sportsbook",
+            },
+          },
+        },
+      },
+      {
+        $sort: { t1_name: 1, t2_name: 1 }, // Sorting alphabetically by team names
+      },
+    ];
+
+    // Execute the aggregation pipeline
+    const events = await EventModel.aggregate(pipeline);
+
+    await closeMongoDBConnection();
+
+    // Send the results
+    res.json(events);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching NBA moneyline odds",
-      error: error.message,
-    });
+    console.error("Failed to fetch moneyline odds with aggregation:", error);
+    res.status(500).send("Internal server error");
   }
 });
-
-// Function to group events by game
-function groupEventsByGame(events) {
-  const grouped = {};
-  events.forEach((event) => {
-    const matchupKey = `${event.t1_name} vs ${event.t2_name}`;
-    if (!grouped[matchupKey]) {
-      grouped[matchupKey] = {
-        t1_name: event.t1_name,
-        t2_name: event.t2_name,
-        odds: [],
-      };
-    }
-    grouped[matchupKey].odds.push({
-      sportsbook: event.sportsbook,
-      t1_moneyline: event.t1_moneyline,
-      t2_moneyline: event.t2_moneyline,
-    });
-  });
-  return Object.values(grouped);
-}
 
 // Start the server
 app.listen(PORT, () => {
