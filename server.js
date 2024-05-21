@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import mongoose, { connect } from "mongoose";
+import mongoose from "mongoose";
 import EventModel from "./Models/Event.js";
 
 const CONNECTION_STRING =
@@ -33,7 +33,6 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
   try {
     await connectToMongoDB();
 
-    // Start building the aggregation pipeline
     const pipeline = [
       {
         $match: {
@@ -46,7 +45,18 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
         },
       },
       {
-        $sort: { created_at: -1 },
+        $lookup: {
+          from: "upcomings",
+          localField: "league",
+          foreignField: "league",
+          as: "upcomingDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$upcomingDetails",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $group: {
@@ -56,6 +66,7 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
             sportsbook: "$sportsbook",
           },
           doc: { $first: "$$ROOT" },
+          date: { $first: "$upcomingDetails.date" },
         },
       },
       {
@@ -68,30 +79,11 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
               t2_moneyline: "$doc.t2_moneyline",
             },
           },
+          date: { $first: "$date" },
         },
       },
       {
-        $unwind: "$moneylines",
-      },
-      {
-        $sort: { "moneylines.sportsbook": 1 },
-      },
-      {
-        $group: {
-          _id: "$_id",
-          moneylines: { $push: "$moneylines" },
-          avg_t1_moneyline: { $first: "$avg_t1_moneyline" },
-          avg_t2_moneyline: { $first: "$avg_t2_moneyline" },
-          best_t1_moneyline: { $first: "$best_t1_moneyline" },
-          best_t2_moneyline: { $first: "$best_t2_moneyline" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          t1_name: "$_id.t1_name",
-          t2_name: "$_id.t2_name",
-          moneylines: 1,
+        $addFields: {
           avg_t1_moneyline: {
             $round: [{ $avg: "$moneylines.t1_moneyline" }, 2],
           },
@@ -100,22 +92,29 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
           },
           best_t1_moneyline: { $max: "$moneylines.t1_moneyline" },
           best_t2_moneyline: { $max: "$moneylines.t2_moneyline" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          t1_name: "$_id.t1_name",
+          t2_name: "$_id.t2_name",
+          moneylines: 1,
+          date: 1,
+          avg_t1_moneyline: 1,
+          avg_t2_moneyline: 1,
+          best_t1_moneyline: 1,
+          best_t2_moneyline: 1,
           best_t1_moneyline_sportsbooks: {
             $map: {
               input: {
                 $filter: {
                   input: "$moneylines",
                   as: "line",
-                  cond: {
-                    $eq: [
-                      "$$line.t1_moneyline",
-                      { $max: "$moneylines.t1_moneyline" },
-                    ],
-                  },
+                  cond: { $eq: ["$$line.t1_moneyline", "$best_t1_moneyline"] },
                 },
               },
-              as: "line",
-              in: "$$line.sportsbook",
+              in: "$$this.sportsbook",
             },
           },
           best_t2_moneyline_sportsbooks: {
@@ -124,31 +123,21 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
                 $filter: {
                   input: "$moneylines",
                   as: "line",
-                  cond: {
-                    $eq: [
-                      "$$line.t2_moneyline",
-                      { $max: "$moneylines.t2_moneyline" },
-                    ],
-                  },
+                  cond: { $eq: ["$$line.t2_moneyline", "$best_t2_moneyline"] },
                 },
               },
-              as: "line",
-              in: "$$line.sportsbook",
+              in: "$$this.sportsbook",
             },
           },
         },
       },
       {
-        $sort: { t1_name: 1, t2_name: 1 }, // Sorting alphabetically by team names
+        $sort: { t1_name: 1, t2_name: 1 },
       },
     ];
 
-    // Execute the aggregation pipeline
     const events = await EventModel.aggregate(pipeline);
-
     await closeMongoDBConnection();
-
-    // Send the results
     res.json(events);
   } catch (error) {
     console.error("Failed to fetch moneyline odds with aggregation:", error);
