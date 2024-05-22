@@ -284,6 +284,147 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
   }
 });
 
+app.get("/spread/:league/:sportsbooks", async (req, res) => {
+  const { league, sportsbooks } = req.params;
+  const sportsbookArray = sportsbooks.split(",");
+
+  try {
+    await connectToMongoDB();
+
+    const pipeline = [
+      {
+        $match: {
+          league: league,
+          sportsbook: { $in: sportsbookArray },
+          $or: [{ t1_spread: { $ne: null } }, { t2_spread: { $ne: null } }],
+        },
+      },
+      {
+        $lookup: {
+          from: "upcomings",
+          localField: "league",
+          foreignField: "league",
+          as: "upcomingDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$upcomingDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            t1_name: "$t1_name",
+            t2_name: "$t2_name",
+            sportsbook: "$sportsbook",
+          },
+          t1_spread: { $first: "$t1_spread" },
+          t2_spread: { $first: "$t2_spread" },
+          t1_spread_margin: { $first: "$t1_spread_margin" },
+          t2_spread_margin: { $first: "$t2_spread_margin" },
+          date: { $first: "$upcomingDetails.date" },
+        },
+      },
+      {
+        $group: {
+          _id: { t1_name: "$_id.t1_name", t2_name: "$_id.t2_name" },
+          spreads: {
+            $push: {
+              sportsbook: "$_id.sportsbook",
+              t1_spread: "$t1_spread",
+              t2_spread: "$t2_spread",
+              t1_spread_margin: "$t1_spread_margin",
+              t2_spread_margin: "$t2_spread_margin",
+            },
+          },
+          date: { $max: "$date" },
+        },
+      },
+      {
+        $addFields: {
+          best_t1_spread: { $max: "$spreads.t1_spread" },
+          best_t2_spread: { $max: "$spreads.t2_spread" },
+        },
+      },
+      {
+        $addFields: {
+          best_t1_spread_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$spreads",
+                  as: "spread",
+                  cond: { $eq: ["$$spread.t1_spread", "$best_t1_spread"] },
+                },
+              },
+              as: "filteredspread",
+              in: "$$filteredspread.sportsbook",
+            },
+          },
+          best_t2_spread_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$spreads",
+                  as: "spread",
+                  cond: { $eq: ["$$spread.t2_spread", "$best_t2_spread"] },
+                },
+              },
+              as: "filteredspread",
+              in: "$$filteredspread.sportsbook",
+            },
+          },
+          best_t1_spread_info: {
+            $first: {
+              $filter: {
+                input: "$spreads",
+                as: "spread",
+                cond: { $eq: ["$$spread.t1_spread", "$best_t1_spread"] },
+              },
+            },
+          },
+          best_t2_spread_info: {
+            $first: {
+              $filter: {
+                input: "$spreads",
+                as: "spread",
+                cond: { $eq: ["$$spread.t2_spread", "$best_t2_spread"] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          t1_name: "$_id.t1_name",
+          t2_name: "$_id.t2_name",
+          spreads: 1,
+          date: 1,
+          best_t1_spread: 1,
+          best_t2_spread: 1,
+          best_t1_spread_margin: "$best_t1_spread_info.t1_spread_margin",
+          best_t2_spread_margin: "$best_t2_spread_info.t2_spread_margin",
+          best_t1_spread_sportsbooks: 1,
+          best_t2_spread_sportsbooks: 1,
+        },
+      },
+      {
+        $sort: { t1_name: 1, t2_name: 1 },
+      },
+    ];
+
+    const events = await EventModel.aggregate(pipeline);
+    await closeMongoDBConnection();
+    res.json(events);
+  } catch (error) {
+    console.error("Failed to fetch total lines with aggregation:", error);
+    res.status(500).send("Internal server error");
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
