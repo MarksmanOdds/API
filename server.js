@@ -15,7 +15,7 @@ async function closeMongoDBConnection() {
 }
 
 const app = express();
-const PORT = 5001;
+const PORT = 443;
 
 app.use(express.json());
 app.use(cors());
@@ -147,5 +147,5 @@ app.get("/odds/:league/:sportsbooks/:market", async (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
