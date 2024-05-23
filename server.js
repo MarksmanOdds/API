@@ -41,8 +41,24 @@ app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
       {
         $lookup: {
           from: "upcomings",
-          localField: "league",
-          foreignField: "league",
+          let: {
+            event_league: "$league",
+            event_t1_name: "$t1_name",
+            event_t2_name: "$t2_name",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$league", "$$event_league"] },
+                    { $eq: ["$t1_name", "$$event_t1_name"] },
+                    { $eq: ["$t2_name", "$$event_t2_name"] },
+                  ],
+                },
+              },
+            },
+          ],
           as: "upcomingDetails",
         },
       },
@@ -65,10 +81,10 @@ app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
       },
       {
         $group: {
-          _id: { t1_name: "$doc.t1_name", t2_name: "$doc.t2_name" },
+          _id: { t1_name: "$_id.t1_name", t2_name: "$_id.t2_name" },
           moneylines: {
             $push: {
-              sportsbook: "$doc.sportsbook",
+              sportsbook: "$_id.sportsbook",
               t1_moneyline: "$doc.t1_moneyline",
               t2_moneyline: "$doc.t2_moneyline",
             },
@@ -161,8 +177,24 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
       {
         $lookup: {
           from: "upcomings",
-          localField: "league",
-          foreignField: "league",
+          let: {
+            event_league: "$league",
+            event_t1_name: "$t1_name",
+            event_t2_name: "$t2_name",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$league", "$$event_league"] },
+                    { $eq: ["$t1_name", "$$event_t1_name"] },
+                    { $eq: ["$t2_name", "$$event_t2_name"] },
+                  ],
+                },
+              },
+            },
+          ],
           as: "upcomingDetails",
         },
       },
@@ -177,34 +209,19 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
           _id: {
             t1_name: "$t1_name",
             t2_name: "$t2_name",
-            sportsbook: "$sportsbook",
+            date: "$upcomingDetails.date",
           },
-          t1_total: { $first: "$t1_total" },
-          t2_total: { $first: "$t2_total" },
-          t1_total_line: { $first: "$t1_total_line" },
-          t2_total_line: { $first: "$t2_total_line" },
-          date: { $first: "$upcomingDetails.date" },
-        },
-      },
-      {
-        $group: {
-          _id: { t1_name: "$_id.t1_name", t2_name: "$_id.t2_name" },
           totals: {
             $push: {
-              sportsbook: "$_id.sportsbook",
+              sportsbook: "$sportsbook",
               t1_total: "$t1_total",
               t2_total: "$t2_total",
               t1_total_line: "$t1_total_line",
               t2_total_line: "$t2_total_line",
             },
           },
-          date: { $max: "$date" },
-        },
-      },
-      {
-        $addFields: {
-          best_t1_total: { $max: "$totals.t1_total" },
-          best_t2_total: { $max: "$totals.t2_total" },
+          best_t1_total: { $max: "$t1_total" },
+          best_t2_total: { $max: "$t2_total" },
         },
       },
       {
@@ -218,8 +235,7 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
                   cond: { $eq: ["$$total.t1_total", "$best_t1_total"] },
                 },
               },
-              as: "filteredTotal",
-              in: "$$filteredTotal.sportsbook",
+              in: "$$this.sportsbook",
             },
           },
           best_t2_total_sportsbooks: {
@@ -231,8 +247,7 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
                   cond: { $eq: ["$$total.t2_total", "$best_t2_total"] },
                 },
               },
-              as: "filteredTotal",
-              in: "$$filteredTotal.sportsbook",
+              in: "$$this.sportsbook",
             },
           },
           best_t1_total_info: {
@@ -244,15 +259,6 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
               },
             },
           },
-          best_t2_total_info: {
-            $first: {
-              $filter: {
-                input: "$totals",
-                as: "total",
-                cond: { $eq: ["$$total.t2_total", "$best_t2_total"] },
-              },
-            },
-          },
         },
       },
       {
@@ -261,13 +267,13 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
           t1_name: "$_id.t1_name",
           t2_name: "$_id.t2_name",
           totals: 1,
-          date: 1,
+          date: "$_id.date",
           best_t1_total: 1,
           best_t2_total: 1,
-          best_t1_total_line: "$best_t1_total_info.t1_total_line",
-          best_t2_total_line: "$best_t2_total_info.t2_total_line",
           best_t1_total_sportsbooks: 1,
           best_t2_total_sportsbooks: 1,
+          best_t1_total_line: "$best_t1_total_info.t1_total_line",
+          best_t2_total_line: "$best_t1_total_info.t2_total_line",
         },
       },
       {
@@ -302,8 +308,24 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
       {
         $lookup: {
           from: "upcomings",
-          localField: "league",
-          foreignField: "league",
+          let: {
+            event_league: "$league",
+            event_t1_name: "$t1_name",
+            event_t2_name: "$t2_name",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$league", "$$event_league"] },
+                    { $eq: ["$t1_name", "$$event_t1_name"] },
+                    { $eq: ["$t2_name", "$$event_t2_name"] },
+                  ],
+                },
+              },
+            },
+          ],
           as: "upcomingDetails",
         },
       },
@@ -319,17 +341,21 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
             t1_name: "$t1_name",
             t2_name: "$t2_name",
             sportsbook: "$sportsbook",
+            date: "$upcomingDetails.date",
           },
           t1_spread: { $first: "$t1_spread" },
           t2_spread: { $first: "$t2_spread" },
           t1_spread_margin: { $first: "$t1_spread_margin" },
           t2_spread_margin: { $first: "$t2_spread_margin" },
-          date: { $first: "$upcomingDetails.date" },
         },
       },
       {
         $group: {
-          _id: { t1_name: "$_id.t1_name", t2_name: "$_id.t2_name" },
+          _id: {
+            t1_name: "$_id.t1_name",
+            t2_name: "$_id.t2_name",
+            date: "$_id.date",
+          },
           spreads: {
             $push: {
               sportsbook: "$_id.sportsbook",
@@ -339,7 +365,6 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
               t2_spread_margin: "$t2_spread_margin",
             },
           },
-          date: { $max: "$date" },
         },
       },
       {
@@ -350,32 +375,6 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
       },
       {
         $addFields: {
-          best_t1_spread_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$spreads",
-                  as: "spread",
-                  cond: { $eq: ["$$spread.t1_spread", "$best_t1_spread"] },
-                },
-              },
-              as: "filteredspread",
-              in: "$$filteredspread.sportsbook",
-            },
-          },
-          best_t2_spread_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$spreads",
-                  as: "spread",
-                  cond: { $eq: ["$$spread.t2_spread", "$best_t2_spread"] },
-                },
-              },
-              as: "filteredspread",
-              in: "$$filteredspread.sportsbook",
-            },
-          },
           best_t1_spread_info: {
             $first: {
               $filter: {
@@ -401,18 +400,40 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
           _id: 0,
           t1_name: "$_id.t1_name",
           t2_name: "$_id.t2_name",
+          date: "$_id.date",
           spreads: 1,
-          date: 1,
           best_t1_spread: 1,
           best_t2_spread: 1,
           best_t1_spread_margin: "$best_t1_spread_info.t1_spread_margin",
           best_t2_spread_margin: "$best_t2_spread_info.t2_spread_margin",
-          best_t1_spread_sportsbooks: 1,
-          best_t2_spread_sportsbooks: 1,
+          best_t1_spread_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$spreads",
+                  as: "spread",
+                  cond: { $eq: ["$$spread.t1_spread", "$best_t1_spread"] },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
+          best_t2_spread_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$spreads",
+                  as: "spread",
+                  cond: { $eq: ["$$spread.t2_spread", "$best_t2_spread"] },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
         },
       },
       {
-        $sort: { t1_name: 1, t2_name: 1 },
+        $sort: { t1_name: 1, t2_name: 1, date: 1 },
       },
     ];
 
@@ -420,7 +441,7 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
     await closeMongoDBConnection();
     res.json(events);
   } catch (error) {
-    console.error("Failed to fetch total lines with aggregation:", error);
+    console.error("Failed to fetch spread lines with aggregation:", error);
     res.status(500).send("Internal server error");
   }
 });
