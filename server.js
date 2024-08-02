@@ -20,7 +20,7 @@ const PORT = 3001;
 app.use(express.json());
 app.use(cors());
 
-app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
+app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
   const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
@@ -160,7 +160,7 @@ app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
   }
 });
 
-app.get("/total/:league/:sportsbooks", async (req, res) => {
+app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
   const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
@@ -309,7 +309,7 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
   }
 });
 
-app.get("/spread/:league/:sportsbooks", async (req, res) => {
+app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
   const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
