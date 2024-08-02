@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(cors());
 
 app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
-  const { league, sportsbooks } = req.params;
+  const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
   try {
@@ -31,6 +31,7 @@ app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
       {
         $match: {
           league: league,
+          $or: [{ region: region }, { region: null }],
           sportsbook: { $in: sportsbookArray },
           $or: [
             { t1_moneyline: { $ne: null } },
@@ -160,7 +161,7 @@ app.get("/moneyline/:league/:sportsbooks", async (req, res) => {
 });
 
 app.get("/total/:league/:sportsbooks", async (req, res) => {
-  const { league, sportsbooks } = req.params;
+  const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
   try {
@@ -170,6 +171,7 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
       {
         $match: {
           league: league,
+          $or: [{ region: region }, { region: null }],
           sportsbook: { $in: sportsbookArray },
           $or: [{ t1_total: { $ne: null } }, { t2_total: { $ne: null } }],
         },
@@ -308,7 +310,7 @@ app.get("/total/:league/:sportsbooks", async (req, res) => {
 });
 
 app.get("/spread/:league/:sportsbooks", async (req, res) => {
-  const { league, sportsbooks } = req.params;
+  const { league, region, sportsbooks } = req.params;
   const sportsbookArray = sportsbooks.split(",");
 
   try {
@@ -318,6 +320,7 @@ app.get("/spread/:league/:sportsbooks", async (req, res) => {
       {
         $match: {
           league: league,
+          $or: [{ region: region }, { region: null }],
           sportsbook: { $in: sportsbookArray },
           $or: [{ t1_spread: { $ne: null } }, { t2_spread: { $ne: null } }],
         },

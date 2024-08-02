@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const EventSchema = new mongoose.Schema({
   sportsbook: String,
   league: String,
+  region: { type: String, default: null },
   t1_name: String,
   t2_name: String,
   t1_moneyline: { type: Number, default: null },
