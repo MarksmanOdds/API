@@ -59,6 +59,8 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
                 },
               },
             },
+            { $sort: { created_at: -1 } },
+            { $limit: 1 },
           ],
           as: "upcomingDetails",
         },
@@ -115,24 +117,6 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
           },
           best_t1_odds: { $max: "$odds.t1_odds" },
           best_t2_odds: { $max: "$odds.t2_odds" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          t1_name: "$_id.t1_name",
-          t2_name: "$_id.t2_name",
-          odds: 1,
-          date: 1,
-          game_interval_type: 1,
-          current_game_interval: 1,
-          t1_score: 1,
-          t2_score: 1,
-          status: 1,
-          avg_t1_odds: 1,
-          avg_t2_odds: 1,
-          best_t1_odds: 1,
-          best_t2_odds: 1,
           best_t1_odds_sportsbooks: {
             $map: {
               input: {
@@ -161,6 +145,26 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
               in: "$$this.sportsbook",
             },
           },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          t1_name: "$_id.t1_name",
+          t2_name: "$_id.t2_name",
+          odds: 1,
+          date: 1,
+          game_interval_type: 1,
+          current_game_interval: 1,
+          t1_score: 1,
+          t2_score: 1,
+          status: 1,
+          avg_t1_odds: 1,
+          avg_t2_odds: 1,
+          best_t1_odds: 1,
+          best_t2_odds: 1,
+          best_t1_odds_sportsbooks: 1,
+          best_t2_odds_sportsbooks: 1,
         },
       },
       {
@@ -213,8 +217,8 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
                 },
               },
             },
-            { $sort: { date: -1 } }, // Sorting inside lookup to get latest date first
-            { $limit: 1 }, // Limiting to the most recent date
+            { $sort: { created_at: -1 } },
+            { $limit: 1 },
           ],
           as: "upcomingDetails",
         },
@@ -291,34 +295,6 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
-          best_t1_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t1_odds", "$best_t1_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
-          best_t2_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t2_odds", "$best_t2_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
         },
       },
       {
@@ -371,7 +347,7 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
                 },
               },
             },
-            { $sort: { date: -1 } },
+            { $sort: { created_at: -1 } },
             { $limit: 1 },
           ],
           as: "upcomingDetails",
@@ -449,34 +425,6 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
-          best_t1_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t1_odds", "$best_t1_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
-          best_t2_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t2_odds", "$best_t2_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
         },
       },
       {
