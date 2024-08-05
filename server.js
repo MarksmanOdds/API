@@ -375,7 +375,7 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
                 },
               },
             },
-            { $sort: { date: -1 } },
+            { $sort: { created_at: -1 } },
             { $limit: 1 },
           ],
           as: "upcomingDetails",
