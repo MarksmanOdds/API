@@ -117,34 +117,6 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
           },
           best_t1_odds: { $max: "$odds.t1_odds" },
           best_t2_odds: { $max: "$odds.t2_odds" },
-          best_t1_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t1_odds", "$best_t1_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
-          best_t2_odds_sportsbooks: {
-            $map: {
-              input: {
-                $filter: {
-                  input: "$odds",
-                  as: "odd",
-                  cond: {
-                    $eq: ["$$odd.t2_odds", "$best_t2_odds"],
-                  },
-                },
-              },
-              in: "$$this.sportsbook",
-            },
-          },
         },
       },
       {
@@ -159,12 +131,34 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
           t1_score: 1,
           t2_score: 1,
           status: 1,
-          avg_t1_odds: 1,
-          avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
-          best_t1_odds_sportsbooks: 1,
-          best_t2_odds_sportsbooks: 1,
+          best_t1_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: { $eq: ["$$odd.t1_odds", "$best_t1_odds"] },
+                },
+              },
+              as: "item",
+              in: "$$item.sportsbook",
+            },
+          },
+          best_t2_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: { $eq: ["$$odd.t2_odds", "$best_t2_odds"] },
+                },
+              },
+              as: "item",
+              in: "$$item.sportsbook",
+            },
+          },
         },
       },
       {
@@ -295,6 +289,34 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
+          best_t1_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: {
+                    $eq: ["$$odd.t1_odds", "$best_t1_odds"],
+                  },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
+          best_t2_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: {
+                    $eq: ["$$odd.t2_odds", "$best_t2_odds"],
+                  },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
         },
       },
       {
@@ -425,6 +447,34 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
+          best_t1_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: {
+                    $eq: ["$$odd.t1_odds", "$best_t1_odds"],
+                  },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
+          best_t2_odds_sportsbooks: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$odds",
+                  as: "odd",
+                  cond: {
+                    $eq: ["$$odd.t2_odds", "$best_t2_odds"],
+                  },
+                },
+              },
+              in: "$$this.sportsbook",
+            },
+          },
         },
       },
       {
