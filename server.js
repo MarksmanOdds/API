@@ -131,6 +131,8 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
           t1_score: 1,
           t2_score: 1,
           status: 1,
+          avg_t1_odds: 1,
+          avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
           best_t1_odds_sportsbooks: {
@@ -271,6 +273,8 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
           },
           best_t1_odds: { $max: "$odds.t1_odds" },
           best_t2_odds: { $max: "$odds.t2_odds" },
+          best_t1_odds_line: { $max: "$odds.t1_odds_line" },
+          best_t2_odds_line: { $max: "$odds.t2_odds_line" },
         },
       },
       {
@@ -289,6 +293,8 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
+          best_t1_odds_line: 1,
+          best_t2_odds_line: 1,
           best_t1_odds_sportsbooks: {
             $map: {
               input: {
@@ -369,7 +375,7 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
                 },
               },
             },
-            { $sort: { created_at: -1 } },
+            { $sort: { date: -1 } },
             { $limit: 1 },
           ],
           as: "upcomingDetails",
@@ -429,6 +435,8 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
           },
           best_t1_odds: { $max: "$odds.t1_odds" },
           best_t2_odds: { $max: "$odds.t2_odds" },
+          best_t1_odds_line: { $max: "$odds.t1_odds_line" },
+          best_t2_odds_line: { $max: "$odds.t2_odds_line" },
         },
       },
       {
@@ -447,6 +455,8 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
           avg_t2_odds: 1,
           best_t1_odds: 1,
           best_t2_odds: 1,
+          best_t1_odds_line: 1,
+          best_t2_odds_line: 1,
           best_t1_odds_sportsbooks: {
             $map: {
               input: {
