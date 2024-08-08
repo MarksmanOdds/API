@@ -10,9 +10,7 @@ async function connectToMongoDB() {
   await mongoose.connect(CONNECTION_STRING);
 }
 
-async function closeMongoDBConnection() {
-  await mongoose.connection.close();
-}
+connectToMongoDB();
 
 const app = express();
 const PORT = 3001;
@@ -25,8 +23,6 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
   const sportsbookArray = sportsbooks.split(",");
 
   try {
-    await connectToMongoDB();
-
     const pipeline = [
       {
         $match: {
@@ -169,7 +165,6 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
     ];
 
     const events = await EventModel.aggregate(pipeline);
-    await closeMongoDBConnection();
     res.json(events);
   } catch (error) {
     console.error("Failed to fetch moneyline odds with aggregation:", error);
@@ -182,8 +177,6 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
   const sportsbookArray = sportsbooks.split(",");
 
   try {
-    await connectToMongoDB();
-
     const pipeline = [
       {
         $match: {
@@ -331,7 +324,6 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
     ];
 
     const events = await EventModel.aggregate(pipeline);
-    await closeMongoDBConnection();
     res.json(events);
   } catch (error) {
     console.error("Failed to fetch total lines with aggregation:", error);
@@ -344,8 +336,6 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
   const sportsbookArray = sportsbooks.split(",");
 
   try {
-    await connectToMongoDB();
-
     const pipeline = [
       {
         $match: {
@@ -493,7 +483,6 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
     ];
 
     const events = await EventModel.aggregate(pipeline);
-    await closeMongoDBConnection();
     res.json(events);
   } catch (error) {
     console.error("Failed to fetch spread lines with aggregation:", error);
