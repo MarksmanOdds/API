@@ -68,11 +68,6 @@ app.get("/moneyline/:league/:region/:sportsbooks", async (req, res) => {
         },
       },
       {
-        $match: {
-          upcomingDetails: { $ne: null },
-        },
-      },
-      {
         $group: {
           _id: {
             t1_name: "$t1_name",
@@ -221,11 +216,6 @@ app.get("/total/:league/:region/:sportsbooks", async (req, res) => {
         $unwind: {
           path: "$upcomingDetails",
           preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $match: {
-          upcomingDetails: { $ne: null },
         },
       },
       {
@@ -385,11 +375,6 @@ app.get("/spread/:league/:region/:sportsbooks", async (req, res) => {
         $unwind: {
           path: "$upcomingDetails",
           preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $match: {
-          upcomingDetails: { $ne: null },
         },
       },
       {
